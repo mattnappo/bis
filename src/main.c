@@ -8,6 +8,8 @@
 #define MAX_BUFF 2048
 #define MAX_FNAME 32
 
+#define ESCAPE (int)27
+
 #define CENTER(item) ((COLS / 2) - (strlen(item) / 2))
 #define END(item) (COLS - strlen(item))
 
@@ -60,7 +62,7 @@ void destroy_bis_state(struct bis_state *state)
 
 void sync_cursor(struct bis_state *state)
 {
-    move(state->cx, state->cy);
+    move(state->cy, state->cx);
 }
 
 void init_bis_scr()
@@ -112,17 +114,49 @@ void draw_bottom_bar(struct bis_state *state)
 
 int main(void)
 {
+    /* init */
+
     struct bis_state *core = init_bis_state();
-
     init_bis_scr();
-     
-    draw_bottom_bar(core);
-    refresh();
+    
+    /* main loop */ 
 
-    // if user types :wq, quit
+    timeout(-1); // Blocking mode
+    while (1) {
+        draw_bottom_bar(core);
+        // refresh();
+        sync_cursor(core);
+
+        uint32_t c = getch();
+        if (c == 96) {
+            mvprintw(LINES - 3, 0, "ESCAPED!");
+            core->mode = COMMAND;
+            refresh();
+            break;
+        }
+
+        char c_str[10];
+
+        // Debug
+        sprintf(c_str, "%d", c);
+        mvprintw(LINES - 2, 0, c_str);
+
+        core->cx += 1;
+        // core->buffer->append(c); // Buffer the char
+        addch(c);
+        
+        // Actually, move the special keys above
+        // the code for the regular keys
+        // if (c == ESCAPE) {
+        //     break;
+        // }
+    }
+
     sleep(5);
+
+    /* cleanup */
+
     endwin();
     destroy_bis_state(core);
-
     return 0;
 }
