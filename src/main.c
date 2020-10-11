@@ -1,3 +1,4 @@
+// TODO: Replace all instances of LINES and COLS with dynamic values stored in a bis_state_t
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,7 +9,9 @@
 #define MAX_BUFF 2048
 #define MAX_FNAME 32
 
-#define ESCAPE (int)27
+#define ESCAPE (int) 27
+#define TILDE  (int) 96
+#define RETURN (int) 13
 
 #define CENTER(item) ((COLS / 2) - (strlen(item) / 2))
 #define END(item) (COLS - strlen(item))
@@ -47,7 +50,7 @@ struct bis_state *init_bis_state()
     state->buffer = calloc(MAX_BUFF, 1);
     state->filename = calloc(MAX_FNAME, 1);
     state->filename = "newfile";
-    state->mode = INSERT; // TODO: Start in command mode
+    state->mode = COMMAND; // TODO: Start in command mode
     state->cx = 0;
     state->cy = 0;
     return state;
@@ -85,6 +88,10 @@ void init_bis_scr()
 
 void draw_bottom_bar(struct bis_state *state)
 {
+    // Clear the bottom line
+    move(LINES - 1, 0);
+    clrtoeol();
+
     // Print window mode
     char mode_str[20];
     // TODO: Color this
@@ -109,8 +116,52 @@ void draw_bottom_bar(struct bis_state *state)
     sprintf(size, "%dx%d", LINES, COLS);
     mvprintw(LINES - 1, END(size), size);
 
-    sync_cursor(state);
+    // sync_cursor(state);
 }
+
+void handle_insert(struct bis_state *state)
+{
+    int c = getch();
+    if (c == ESCAPE || c == TILDE) { // Fix this, it waits because ESC is weird
+        state->mode = COMMAND;
+        return;
+    }
+
+    char c_str[10];
+
+    // Debug
+    sprintf(c_str, "%x", c);
+    mvprintw(LINES - 2, 0, c_str);
+
+    state->cx += 1;
+    // state->buffer->append(c); // Buffer the char
+    addch(c);
+}
+
+void handle_command(struct bis_state *state)
+{
+    int c = getch();
+    if (c == 'i') {
+        state->mode = INSERT;
+        return;
+    }
+
+    if (c == ':') {
+        move(LINES - 4, 0);
+        addch(c);
+        while (1) {
+            c = getch();
+            addch(c);
+            if (c == RETURN || c == TILDE) {
+                mvprintw(LINES - 5, 0, "Entered command");
+                sync_cursor(state);
+                return;
+            }
+        }
+    }
+}
+
+int handle_replace(struct bis_state *state);
 
 int main(void)
 {
@@ -124,32 +175,26 @@ int main(void)
     timeout(-1); // Blocking mode
     while (1) {
         draw_bottom_bar(core);
-        // refresh();
         sync_cursor(core);
+        refresh();
 
-        uint32_t c = getch();
-        if (c == 96) {
-            mvprintw(LINES - 3, 0, "ESCAPED!");
-            core->mode = COMMAND;
-            refresh();
-            break;
+        switch (core->mode) {
+            case COMMAND:
+                handle_command(core);
+                break;
+
+            case INSERT:
+                handle_insert(core);
+                break;
+
+            case REPLACE:
+                handle_insert(core);
+                break;
+
+            default:
+                mvprintw(LINES - 4, 0, "ERROR: Invalid mode");
+                break;
         }
-
-        char c_str[10];
-
-        // Debug
-        sprintf(c_str, "%d", c);
-        mvprintw(LINES - 2, 0, c_str);
-
-        core->cx += 1;
-        // core->buffer->append(c); // Buffer the char
-        addch(c);
-        
-        // Actually, move the special keys above
-        // the code for the regular keys
-        // if (c == ESCAPE) {
-        //     break;
-        // }
     }
 
     sleep(5);
