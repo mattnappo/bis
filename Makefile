@@ -2,14 +2,14 @@ CC = gcc
 CFLAGS = -g -Wall 
 BINDIR = bin
 SRCDIR = src
-OBJDIR = $(BINDIR)/obj
+OBJDIR = $(BINDIR)
 
 LIBS := ncurses
 
 EXEC := $(BINDIR)/test.out
 
-# SRC := $(shell find $(SRCDIR) -name "*.c")
-SRC := src/main.c
+SRC := $(shell find $(SRCDIR) -name "*.c")
+# SRC := src/main.c
 OBJ := $(SRC:%.c=$(OBJDIR)/%.o)
 
 all: $(EXEC)
